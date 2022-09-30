@@ -34,4 +34,9 @@ public class ProductInfoController {
         }
 
     }
+    @RequestMapping("/t1")
+    public String categoryBrandRelationEntity() {
+       return "返回信息";
+
+    }
 }

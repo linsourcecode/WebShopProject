@@ -1,16 +1,29 @@
 package com.example.controllservice.Entiy;
 
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+
+
+
 import lombok.Data;
 import lombok.ToString;
+import org.hibernate.annotations.Columns;
+import org.hibernate.annotations.Table;
 
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
 import java.io.Serializable;
-@ToString
+
 @Data
-@TableName("bank")
+
+@Entity(name = "bank")
 public class bank implements Serializable {
-    @TableId
+    @Id
+    @Column(nullable = false) //不允许非空
     private String id;
+    @Column(name="money")
     private Double money;
+
+    public bank() {
+    }
 }

@@ -5,6 +5,8 @@ import com.example.controllservice.Entiy.bank;
 import com.example.controllservice.Service.impl.GetProductInfo;
 import com.example.controllservice.config.RedissonConfig;
 import com.example.controllservice.dao.EntiyMapper;
+import com.example.controllservice.dao.bankDao;
+import com.rabbitmq.client.Channel;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.Redisson;
 import org.redisson.api.RBloomFilter;
@@ -20,8 +22,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.scanner.Constant;
 
-import javax.annotation.Resource;
-import java.nio.channels.Channel;
+
+import java.io.IOException;
 import java.sql.Time;
 import java.util.concurrent.TimeUnit;
 @Slf4j
@@ -33,6 +35,8 @@ public class GetProductInfoimpl implements GetProductInfo {
     private RedissonConfig redisson;
     @Autowired
     StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    bankDao bankDao;
 
     @Override
     public CategoryBrandRelationEntity getCategoryBrandRelationEntity(Long id) {
@@ -62,22 +66,63 @@ public class GetProductInfoimpl implements GetProductInfo {
         return flag;
     }
     @RabbitListener(queues = {"lin.java"})
-    public void reviceMq(Message message, bank bank, Channel channel){
+    public void reviceMq(Message message, bank bank, Channel channel) throws IOException {
         byte[] bytes=message.getBody();
         MessageProperties messageProperties=message.getMessageProperties();
+        long deliveryTag = message.getMessageProperties().getDeliveryTag();
+        try{
 
-        log.info("receive "+bank);
+            //逐个确认收到
+            channel.basicAck(deliveryTag,false);
+            bankDao.save(bank);
+
+            log.info("receive "+bank+"successfully");
+        }catch (Exception exception){
+            //long deliveryTag, boolean multiple 批量, boolean requeue 是否回到队列
+            channel.basicNack(deliveryTag,false,false);
+            log.info("fail："+exception);
+        }
+
+
+
+    }
+    //监听死信队列
+    @RabbitListener(queues = {"order.releaseQueue"})
+    public void reviceDelayMq(Message message, bank bank, Channel channel) throws IOException {
+        byte[] bytes=message.getBody();
+        MessageProperties messageProperties=message.getMessageProperties();
+        long deliveryTag = message.getMessageProperties().getDeliveryTag();
+        try{
+
+            //逐个确认收到
+            channel.basicAck(deliveryTag,false);
+            bankDao.save(bank);
+
+            log.info("listen delay queue  "+bank);
+        }catch (Exception exception){
+            //long deliveryTag, boolean multiple 批量, boolean requeue 是否回到队列
+            channel.basicNack(deliveryTag,false,false);
+            log.info("fail："+exception);
+        }
+
 
 
     }
     //不区分消息来源
-    @RabbitHandler
-    public void reviceHandler(Message message, bank bank, Channel channel){
+/*    @RabbitHandler
+    public void reviceHandler(Message message, bank bank, Channel channel) throws IOException {
         byte[] bytes=message.getBody();
         MessageProperties messageProperties=message.getMessageProperties();
+        long deliveryTag = message.getMessageProperties().getDeliveryTag();
+        try{
+            //逐个确认收到
+            channel.basicAck(deliveryTag,false);
+            log.info(String.valueOf(deliveryTag));
+        }catch (Exception exception){
+            //long deliveryTag, boolean multiple 批量, boolean requeue 是否回到队列
+            channel.basicNack(deliveryTag,false,false);
+        }
 
-        log.info("receive "+bank);
 
-
-    }
+        log.info("receive "+bank);}*/
 }
